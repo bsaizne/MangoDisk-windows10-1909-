@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-installer:
@@ -62,3 +62,35 @@ jobs:
           path: target/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 14
+
+      - name: Read product version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "local-v${{ steps.version.outputs.version }}"
+          $asset = (Get-ChildItem target/release/bundle/nsis/*.exe | Select-Object -First 1).FullName
+          if (-not $asset) { throw "no installer found" }
+          $notes = @"
+          Unsigned local build of MangoDisk ${{ steps.version.outputs.version }}.
+
+          - Commit: ${{ github.sha }}
+          - Workflow run: ${{ github.run_id }}
+          - The privileged CPU-temperature helper is unsigned and is rejected at runtime on purpose; every other feature works normally.
+          "@
+          gh release view $tag --json tagName 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "release $tag exists, replacing asset"
+            gh release upload $tag $asset --clobber
+          } else {
+            gh release create $tag $asset --title "MangoDisk ${{ steps.version.outputs.version }} (local build)" --notes $notes --prerelease
+          }
+          if ($LASTEXITCODE -ne 0) { throw "release publish failed" }
+          gh release view $tag --json url --jq .url
