@@ -42,6 +42,12 @@ if (process.platform === 'win32') {
       );
       if (signed.status !== 0) process.exit(signed.status ?? 1);
     }
+    // Local unsigned builds are allowed only when the caller opts in explicitly;
+    // release tooling must never set this variable.
+    if (process.env.MANGODISK_ALLOW_UNSIGNED_PRIVILEGED === '1') {
+      console.log('warning: skipping Authenticode verification for the privileged helper (MANGODISK_ALLOW_UNSIGNED_PRIVILEGED=1)');
+      process.exit(0);
+    }
     // Windows PowerShell must load its own inbox security module even when the
     // build inherits PowerShell 7's incompatible module search path.
     const verificationEnvironment = { ...process.env, MANGODISK_PRIVILEGED_VERIFY_PATH: helper };

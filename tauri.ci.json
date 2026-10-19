@@ -1,0 +1,8 @@
+{
+  "build": {
+    "beforeBuildCommand": "node scripts/build-privileged.mjs --release && pnpm build:frontend"
+  },
+  "bundle": {
+    "createUpdaterArtifacts": false
+  }
+}
