@@ -4,6 +4,8 @@ name: build-installer
 # Trigger it manually from the Actions tab after pushing this branch to a fork.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
