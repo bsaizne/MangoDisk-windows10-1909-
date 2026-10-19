@@ -159,6 +159,11 @@ struct LayoutCollection {
     returned_bytes: u64,
     remote_file_count: u64,
     remote_directory_count: u64,
+    // Files whose default data stream could not be resolved. A layout that
+    // resolves no stream for any file cannot produce trustworthy sizes; it must
+    // fall back to traversal instead of publishing an all-zero aggregate.
+    files_with_stream_usage: u64,
+    files_without_stream_usage: u64,
 }
 
 #[derive(Debug)]

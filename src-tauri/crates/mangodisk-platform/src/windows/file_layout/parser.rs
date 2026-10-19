@@ -116,6 +116,14 @@ pub(super) fn enumerate_layout(
                 .saturating_add(collection.remote_directory_count)
         );
     }
+    // Older Windows builds can enumerate names and directories but omit stream
+    // information entirely. Such a layout reports every file as zero bytes,
+    // which would publish an empty analysis and hide every large-file candidate.
+    if collection.files_with_stream_usage == 0 && collection.files_without_stream_usage > 0 {
+        return Err(LayoutScanError::Platform(
+            "layout_stream_usage_unavailable".to_string(),
+        ));
+    }
     Ok(collection)
 }
 
@@ -212,6 +220,18 @@ fn parse_layout_page(
                     collection.remote_directory_count.saturating_add(1);
             } else {
                 collection.remote_file_count = collection.remote_file_count.saturating_add(1);
+            }
+        }
+        // Track whether the layout exposes default-stream sizes at all. A volume
+        // that enumerates files without a single usable stream cannot be trusted
+        // to report zero bytes honestly.
+        if !is_directory && !is_reparse && !is_remote_placeholder {
+            if space_usage.is_some() {
+                collection.files_with_stream_usage =
+                    collection.files_with_stream_usage.saturating_add(1);
+            } else {
+                collection.files_without_stream_usage =
+                    collection.files_without_stream_usage.saturating_add(1);
             }
         }
         if is_directory {
